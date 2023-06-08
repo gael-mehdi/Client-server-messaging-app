@@ -22,30 +22,40 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 char client_names[MAX_CLIENTS][NAME_LENGTH];
 
 void send_message_all(char* message, int current_client) {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex); // Verrouillage du mutex pour assurer une exécution exclusive de cette section critique
+
+    // Parcours de tous les clients connectés
     for (int i = 0; i < client_count; i++) {
         if (client_sockets[i].socket != current_client) {
+            // Si le client actuel n'est pas le client qui a envoyé le message
+            // Envoi du message au client actuel
             send(client_sockets[i].socket, message, strlen(message), 0);
         }
     }
-    pthread_mutex_unlock(&mutex);
+
+    pthread_mutex_unlock(&mutex); // Déverrouillage du mutex pour permettre à d'autres threads d'accéder à cette section critique
 }
 
 void send_message_to_client(char* message, int client_socket) {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex); // Verrouillage du mutex pour assurer une exécution exclusive de cette section critique
+
+    // Envoi du message au client spécifié
     send(client_socket, message, strlen(message), 0);
-    pthread_mutex_unlock(&mutex);
+
+    pthread_mutex_unlock(&mutex); // Déverrouillage du mutex pour permettre à d'autres threads d'accéder à cette section critique
 }
 
 void send_client_list(int client_socket) {
-    char client_list[BUFFER_SIZE];
-    memset(client_list, 0, BUFFER_SIZE);
+    char client_list[BUFFER_SIZE]; // Buffer pour stocker la liste des clients connectés
+    memset(client_list, 0, BUFFER_SIZE); // Initialisation du buffer à zéro pour éviter les données indésirables
 
+    // Parcourir la liste des clients connectés
     for (int i = 0; i < client_count; i++) {
-        strcat(client_list, client_names[i]);
-        strcat(client_list, "\n");
+        strcat(client_list, client_names[i]); // Ajouter le nom du client à la liste
+        strcat(client_list, "\n"); // Ajouter un saut de ligne après chaque nom de client
     }
 
+    // Envoyer la liste des clients au client spécifié
     send_message_to_client(client_list, client_socket);
 }
 
