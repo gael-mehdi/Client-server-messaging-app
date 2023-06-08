@@ -8,41 +8,54 @@
 
 #define MAX_CLIENTS 10
 #define BUFFER_SIZE 1024
+#define NAME_LENGTH 32
+
+typedef struct {
+    int socket;
+    char name[NAME_LENGTH];
+} Client;
 
 int client_count = 0;
-int client_sockets[MAX_CLIENTS];
+Client client_sockets[MAX_CLIENTS];
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void send_message_all(char* message, int current_client) {
     pthread_mutex_lock(&mutex);
     for (int i = 0; i < client_count; i++) {
-        if (client_sockets[i] != current_client) {
-            send(client_sockets[i], message, strlen(message), 0);
+        if (client_sockets[i].socket != current_client) {
+            send(client_sockets[i].socket, message, strlen(message), 0);
         }
     }
     pthread_mutex_unlock(&mutex);
 }
 
+void send_message_to_client(char* message, int client_socket) {
+    pthread_mutex_lock(&mutex);
+    send(client_socket, message, strlen(message), 0);
+    pthread_mutex_unlock(&mutex);
+}
+
 void *handle_client(void *arg) {
-    int client_socket = *((int *)arg);
+    Client client = *((Client *)arg);
     char buffer[BUFFER_SIZE];
-    char welcome_message[] = "Bienvenue sur le serveur de messagerie !\n";
+    char welcome_message[NAME_LENGTH + 28];
+    sprintf(welcome_message, "Bienvenue, %s !\n", client.name);
     
-    send(client_socket, welcome_message, strlen(welcome_message), 0);
-    printf("Nouvelle connexion établie. Socket client : %d\n", client_socket);
+    send(client.socket, welcome_message, strlen(welcome_message), 0);
+    printf("Nouvelle connexion établie. Nom client : %s\n", client.name);
     
     pthread_mutex_lock(&mutex);
-    client_sockets[client_count++] = client_socket;
+    client_sockets[client_count++] = client;
     pthread_mutex_unlock(&mutex);
     
     while (1) {
-        int message_length = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        int message_length = recv(client.socket, buffer, BUFFER_SIZE, 0);
         if (message_length <= 0) {
             pthread_mutex_lock(&mutex);
             for (int i = 0; i < client_count; i++) {
-                if (client_sockets[i] == client_socket) {
-                    printf("Déconnexion. Socket client : %d\n", client_socket);
-                    close(client_socket);
+                if (client_sockets[i].socket == client.socket) {
+                    printf("Déconnexion. Nom client : %s\n", client.name);
+                    close(client.socket);
                     while (i < client_count - 1) {
                         client_sockets[i] = client_sockets[i + 1];
                         i++;
@@ -55,7 +68,38 @@ void *handle_client(void *arg) {
             break;
         }
         buffer[message_length] = '\0';
-        send_message_all(buffer, client_socket);
+        
+        // Vérifier si le message est destiné à un client spécifique
+        if (buffer[0] == '@') {
+            char* recipient_name = strtok(buffer, " ");
+            char* message = strtok(NULL, "\0");
+            if (recipient_name != NULL && message != NULL) {
+                // Rechercher le client destinataire
+                int recipient_socket = -1;
+                pthread_mutex_lock(&mutex);
+                for (int i = 0; i < client_count; i++) {
+                    if (strcmp(client_sockets[i].name, recipient_name + 1) == 0) {
+                        recipient_socket = client_sockets[i].socket;
+                        break;
+                    }
+                }
+                pthread_mutex_unlock(&mutex);
+                
+                // Envoyer le message au client destinataire
+                if (recipient_socket != -1) {
+                    char message_with_name[NAME_LENGTH + BUFFER_SIZE + 4];
+                    sprintf(message_with_name, "%s: %s", client.name, message);
+                    send_message_to_client(message_with_name, recipient_socket);
+                } else {
+                    send_message_to_client("Le destinataire n'existe pas.", client.socket);
+                }
+            }
+        } else {
+            // Envoyer le message à tous les clients
+            char message_with_name[NAME_LENGTH + BUFFER_SIZE + 3];
+            sprintf(message_with_name, "%s: %s", client.name, buffer);
+            send_message_all(message_with_name, client.socket);
+        }
     }
     
     return NULL;
@@ -101,7 +145,21 @@ int main() {
             exit(EXIT_FAILURE);
         }
         
-        pthread_create(&thread_id, NULL, handle_client, &client_socket);
+        // Recevoir le nom du client
+        char client_name[NAME_LENGTH];
+        int name_length = recv(client_socket, client_name, NAME_LENGTH, 0);
+        if (name_length <= 0) {
+            perror("Erreur lors de la réception du nom du client");
+            exit(EXIT_FAILURE);
+        }
+        client_name[name_length] = '\0';
+        
+        // Création de la structure Client
+        Client client;
+        client.socket = client_socket;
+        strncpy(client.name, client_name, NAME_LENGTH);
+        
+        pthread_create(&thread_id, NULL, handle_client, &client);
         pthread_detach(thread_id);
     }
     
