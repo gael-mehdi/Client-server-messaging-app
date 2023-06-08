@@ -19,6 +19,7 @@ typedef struct {
 int client_count = 0;
 Client client_sockets[MAX_CLIENTS];
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+char client_names[MAX_CLIENTS][NAME_LENGTH];
 
 void send_message_all(char* message, int current_client) {
     pthread_mutex_lock(&mutex);
@@ -36,6 +37,18 @@ void send_message_to_client(char* message, int client_socket) {
     pthread_mutex_unlock(&mutex);
 }
 
+void send_client_list(int client_socket) {
+    char client_list[BUFFER_SIZE];
+    memset(client_list, 0, BUFFER_SIZE);
+
+    for (int i = 0; i < client_count; i++) {
+        strcat(client_list, client_names[i]);
+        strcat(client_list, "\n");
+    }
+
+    send_message_to_client(client_list, client_socket);
+}
+
 void *handle_client(void *arg) {
     Client client = *((Client *)arg);
     char buffer[BUFFER_SIZE];
@@ -47,6 +60,10 @@ void *handle_client(void *arg) {
     
     pthread_mutex_lock(&mutex);
     client_sockets[client_count++] = client;
+
+	// Ajouter le nom du client à la liste des noms
+	strcpy(client_names[client_count - 1], client.name);
+
     pthread_mutex_unlock(&mutex);
     
     while (1) {
@@ -62,6 +79,10 @@ void *handle_client(void *arg) {
                         i++;
                     }
                     client_count--;
+
+					// Supprimer le nom du client de la liste des noms
+					memset(client_names[i], 0, NAME_LENGTH);
+
                     break;
                 }
             }
@@ -69,6 +90,12 @@ void *handle_client(void *arg) {
             break;
         }
         buffer[message_length] = '\0';
+
+		// Envoyer la liste des noms des clients connectés
+		if (strcmp(buffer, "#list") == 0) {
+    		send_client_list(client.socket);
+		}
+
         
         // Vérifier si le message est destiné à un client spécifique
         if (buffer[0] == '@') {
