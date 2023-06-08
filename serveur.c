@@ -9,6 +9,7 @@
 #define MAX_CLIENTS 10
 #define BUFFER_SIZE 1024
 #define NAME_LENGTH 32
+#define PORT 30004
 
 typedef struct {
     int socket;
@@ -89,9 +90,10 @@ void *handle_client(void *arg) {
                 if (recipient_socket != -1) {
                     char message_with_name[NAME_LENGTH + BUFFER_SIZE + 4];
                     sprintf(message_with_name, "%s: %s", client.name, message);
+                    send_message_to_client("Uniquement à vous :\n", recipient_socket);  // Message spécifique destiné au client destinataire
                     send_message_to_client(message_with_name, recipient_socket);
                 } else {
-                    send_message_to_client("Le destinataire n'existe pas.", client.socket);
+                    send_message_to_client("Le destinataire n'existe pas.\n", client.socket);
                 }
             }
         } else {
@@ -120,7 +122,7 @@ int main() {
     // Configuration de l'adresse du serveur
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(12345);
+    server_address.sin_port = htons(PORT);
     
     // Lien du socket à l'adresse et au port spécifiés
     if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) == -1) {

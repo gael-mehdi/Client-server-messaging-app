@@ -8,6 +8,7 @@
 
 #define BUFFER_SIZE 1024
 #define NAME_LENGTH 32
+#define PORT 30004
 
 int server_socket;
 
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
     // Configuration de l'adresse du serveur
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1");  // Adresse IP du serveur
-    server_address.sin_port = htons(12345);  // Port du serveur
+    server_address.sin_port = htons(PORT);  // Port du serveur
     
     // Connexion au serveur
     if (connect(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) == -1) {
