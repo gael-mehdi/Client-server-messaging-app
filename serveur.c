@@ -26,10 +26,8 @@ void send_message_all(char* message, int current_client) {
 
     // Parcours de tous les clients connectés
     for (int i = 0; i < client_count; i++) {
-        if (client_sockets[i].socket != current_client) {
-            // Si le client actuel n'est pas le client qui a envoyé le message
-            // Envoi du message au client actuel
-            send(client_sockets[i].socket, message, strlen(message), 0);
+        if (client_sockets[i].socket != current_client) { // Si le client actuel n'est pas le client qui a envoyé le message
+            send(client_sockets[i].socket, message, strlen(message), 0); // Envoi du message au client actuel
         }
     }
 
@@ -39,8 +37,7 @@ void send_message_all(char* message, int current_client) {
 void send_message_to_client(char* message, int client_socket) {
     pthread_mutex_lock(&mutex); // Verrouillage du mutex pour assurer une exécution exclusive de cette section critique
 
-    // Envoi du message au client spécifié
-    send(client_socket, message, strlen(message), 0);
+    send(client_socket, message, strlen(message), 0); // Envoi du message au client spécifié
 
     pthread_mutex_unlock(&mutex); // Déverrouillage du mutex pour permettre à d'autres threads d'accéder à cette section critique
 }
@@ -55,8 +52,7 @@ void send_client_list(int client_socket) {
         strcat(client_list, "\n"); // Ajouter un saut de ligne après chaque nom de client
     }
 
-    // Envoyer la liste des clients au client spécifié
-    send_message_to_client(client_list, client_socket);
+    send_message_to_client(client_list, client_socket); // Envoyer la liste des clients au client spécifié
 }
 
 void *handle_client(void *arg) {
@@ -71,8 +67,7 @@ void *handle_client(void *arg) {
     pthread_mutex_lock(&mutex);
     client_sockets[client_count++] = client;
 
-	// Ajouter le nom du client à la liste des noms
-	strcpy(client_names[client_count - 1], client.name);
+	strcpy(client_names[client_count - 1], client.name); // Ajouter le nom du client à la liste des noms
 
     pthread_mutex_unlock(&mutex);
     
@@ -90,8 +85,7 @@ void *handle_client(void *arg) {
                     }
                     client_count--;
 
-					// Supprimer le nom du client de la liste des noms
-					memset(client_names[i], 0, NAME_LENGTH);
+					memset(client_names[i], 0, NAME_LENGTH); // Supprimer le nom du client de la liste des noms
 
                     break;
                 }
