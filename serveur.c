@@ -67,7 +67,7 @@ void *handle_client(void *arg) {
     pthread_mutex_lock(&mutex);
     client_sockets[client_count++] = client;
 
-	strcpy(client_names[client_count - 1], client.name); // Ajouter le nom du client à la liste des noms
+    strcpy(client_names[client_count - 1], client.name); // Ajouter le nom du client à la liste des noms
 
     pthread_mutex_unlock(&mutex);
     
@@ -85,7 +85,7 @@ void *handle_client(void *arg) {
                     }
                     client_count--;
 
-					memset(client_names[i], 0, NAME_LENGTH); // Supprimer le nom du client de la liste des noms
+                    memset(client_names[i], 0, NAME_LENGTH); // Supprimer le nom du client de la liste des noms
 
                     break;
                 }
@@ -95,12 +95,12 @@ void *handle_client(void *arg) {
         }
         buffer[message_length] = '\0';
 
-		// Envoyer la liste des noms des clients connectés
-		if (strcmp(buffer, "#list") == 0) {
-    		send_client_list(client.socket);
-		}
+        // Envoyer la liste des noms des clients connectés
+        if (strcmp(buffer, "#list") == 0) {
+            send_client_list(client.socket);
+            continue; // Passer à la prochaine itération pour éviter l'envoi du message à tous les clients
+        }
 
-        
         // Vérifier si le message est destiné à un client spécifique
         if (buffer[0] == '@') {
             char* recipient_name = strtok(buffer, " ");
