@@ -8,7 +8,7 @@
 
 #define BUFFER_SIZE 1024
 #define NAME_LENGTH 32
-#define PORT 30004
+#define PORT 30005
 
 int server_socket;
 
