@@ -67,7 +67,7 @@ void *handle_client(void *arg) {
     pthread_mutex_lock(&mutex);
     client_sockets[client_count++] = client;
 
-    strcpy(client_names[client_count - 1], client.name); // Ajouter le nom du client à la liste des noms
+	strcpy(client_names[client_count - 1], client.name); // Ajouter le nom du client à la liste des noms
 
     pthread_mutex_unlock(&mutex);
     
@@ -85,7 +85,7 @@ void *handle_client(void *arg) {
                     }
                     client_count--;
 
-                    memset(client_names[i], 0, NAME_LENGTH); // Supprimer le nom du client de la liste des noms
+					memset(client_names[i], 0, NAME_LENGTH); // Supprimer le nom du client de la liste des noms
 
                     break;
                 }
@@ -95,12 +95,12 @@ void *handle_client(void *arg) {
         }
         buffer[message_length] = '\0';
 
-        // Envoyer la liste des noms des clients connectés
-        if (strcmp(buffer, "#list") == 0) {
-            send_client_list(client.socket);
-            continue; // Passer à la prochaine itération pour éviter l'envoi du message à tous les clients
-        }
+		// Envoyer la liste des noms des clients connectés
+		if (strcmp(buffer, "#list") == 0) {
+    		send_client_list(client.socket);
+		}
 
+        
         // Vérifier si le message est destiné à un client spécifique
         if (buffer[0] == '@') {
             char* recipient_name = strtok(buffer, " ");
@@ -120,8 +120,11 @@ void *handle_client(void *arg) {
                 // Envoyer le message au client destinataire
                 if (recipient_socket != -1) {
                     char message_with_name[NAME_LENGTH + BUFFER_SIZE + 4];
-                    sprintf(message_with_name, "%s: %s", client.name, message);
-                    send_message_to_client("Uniquement à vous :\n", recipient_socket);  // Message spécifique destiné au client destinataire
+                    if (recipient_socket == client.socket) {
+                        sprintf(message_with_name, "Vous : %s", message);
+                    } else {
+                        sprintf(message_with_name, "%s: %s", client.name, message);
+                    }
                     send_message_to_client(message_with_name, recipient_socket);
                 } else {
                     send_message_to_client("Le destinataire n'existe pas.\n", client.socket);
@@ -172,27 +175,21 @@ int main() {
     while (1) {
         socklen_t client_address_length = sizeof(client_address);
         client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_length);
-        
         if (client_socket == -1) {
-            perror("Erreur lors de la tentative d'acceptation d'une connexion");
+            perror("Erreur lors de la création du socket client");
             exit(EXIT_FAILURE);
         }
         
-        // Recevoir le nom du client
+        // Demander le nom du client
         char client_name[NAME_LENGTH];
         int name_length = recv(client_socket, client_name, NAME_LENGTH, 0);
-        if (name_length <= 0) {
-            perror("Erreur lors de la réception du nom du client");
-            exit(EXIT_FAILURE);
-        }
         client_name[name_length] = '\0';
         
-        // Création de la structure Client
         Client client;
         client.socket = client_socket;
-        strncpy(client.name, client_name, NAME_LENGTH);
+        strcpy(client.name, client_name);
         
-        pthread_create(&thread_id, NULL, handle_client, &client);
+        pthread_create(&thread_id, NULL, handle_client, (void *)&client);
         pthread_detach(thread_id);
     }
     
