@@ -62,7 +62,7 @@ void *handle_client(void *arg) {
     sprintf(welcome_message, "Bienvenue, %s !\n", client.name);
     
     send(client.socket, welcome_message, strlen(welcome_message), 0);
-    printf("Nouvelle connexion établie. Nom client : %s\n", client.name);
+    printf("Nouvelle connexion établie. Nom du client : %s\n", client.name);
     
     pthread_mutex_lock(&mutex);
     client_sockets[client_count++] = client;
@@ -77,7 +77,7 @@ void *handle_client(void *arg) {
             pthread_mutex_lock(&mutex);
             for (int i = 0; i < client_count; i++) {
                 if (client_sockets[i].socket == client.socket) {
-                    printf("Déconnexion. Nom client : %s\n", client.name);
+                    printf("Déconnexion. Nom du client : %s\n", client.name);
                     close(client.socket);
                     while (i < client_count - 1) {
                         client_sockets[i] = client_sockets[i + 1];

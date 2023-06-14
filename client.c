@@ -12,7 +12,7 @@
 
 int server_socket;
 
-void *receive_messages(void *arg) {
+void *receive_messages() {
     char buffer[BUFFER_SIZE];
     while (1) {
         int message_length = recv(server_socket, buffer, BUFFER_SIZE, 0);
