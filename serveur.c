@@ -56,85 +56,87 @@ void send_client_list(int client_socket) {
 }
 
 void *handle_client(void *arg) {
-    Client client = *((Client *)arg);
-    char buffer[BUFFER_SIZE];
-    char welcome_message[NAME_LENGTH + 28];
-    sprintf(welcome_message, "Bienvenue, %s !\n", client.name);
-    
-    send(client.socket, welcome_message, strlen(welcome_message), 0);
-    printf("Nouvelle connexion établie. Nom du client : %s\n", client.name);
-    
-    pthread_mutex_lock(&mutex);
-    client_sockets[client_count++] = client;
+    Client client = *((Client *)arg); // Récupération de la structure Client à partir de l'argument passé au thread
+    char buffer[BUFFER_SIZE]; // Tampon pour stocker les messages reçus du client
+    char welcome_message[NAME_LENGTH + 28]; // Message de bienvenue à envoyer au client
 
-    strcpy(client_names[client_count - 1], client.name); // Ajouter le nom du client à la liste des noms
+    sprintf(welcome_message, "Bienvenue, %s !\n", client.name); // Formatage du message de bienvenue avec le nom du client
 
-    pthread_mutex_unlock(&mutex);
-    
+    send(client.socket, welcome_message, strlen(welcome_message), 0); // Envoi du message de bienvenue au client
+    printf("Nouvelle connexion établie. Nom du client : %s\n", client.name); // Affichage du nom du client connecté
+
+    pthread_mutex_lock(&mutex); // Verrouillage du mutex pour assurer une exécution exclusive de cette section critique
+    client_sockets[client_count++] = client; // Ajout du client à la liste des clients connectés
+
+    strcpy(client_names[client_count - 1], client.name); // Ajout du nom du client à la liste des noms des clients connectés
+
+    pthread_mutex_unlock(&mutex); // Déverrouillage du mutex
+
     while (1) {
-        int message_length = recv(client.socket, buffer, BUFFER_SIZE, 0);
-        if (message_length <= 0) {
-            pthread_mutex_lock(&mutex);
+        int message_length = recv(client.socket, buffer, BUFFER_SIZE, 0); // Réception du message du client
+        if (message_length <= 0) { // Si la longueur du message est nulle ou négative, le client s'est déconnecté
+            pthread_mutex_lock(&mutex); // Verrouillage du mutex
             for (int i = 0; i < client_count; i++) {
-                if (client_sockets[i].socket == client.socket) {
+                if (client_sockets[i].socket == client.socket) { // Recherche du client dans la liste des clients connectés
                     printf("Déconnexion. Nom du client : %s\n", client.name);
-                    close(client.socket);
+                    close(client.socket); // Fermeture du socket du client déconnecté
+
+                    // Décalage des clients dans le tableau pour combler l'emplacement du client déconnecté
                     while (i < client_count - 1) {
                         client_sockets[i] = client_sockets[i + 1];
                         i++;
                     }
-                    client_count--;
+                    client_count--; // Décrémentation du nombre de clients connectés
 
-                    memset(client_names[i], 0, NAME_LENGTH); // Supprimer le nom du client de la liste des noms
+                    memset(client_names[i], 0, NAME_LENGTH); // Suppression du nom du client de la liste des noms
 
                     break;
                 }
             }
-            pthread_mutex_unlock(&mutex);
-            break;
+            pthread_mutex_unlock(&mutex); // Déverrouillage du mutex
+            break; // Sortie de la boucle
         }
-        buffer[message_length] = '\0';
+        buffer[message_length] = '\0'; // Ajout du caractère de fin de chaîne au message reçu
 
-        // Envoyer la liste des noms des clients connectés
-        if (strcmp(buffer, "#list") == 0) {
-            send_client_list(client.socket);
-            continue; // Passer à la prochaine itération pour éviter l'envoi du message à tous les clients
+        if (strcmp(buffer, "#list") == 0) { // Si le message est "#list", le client demande la liste des clients connectés
+            send_client_list(client.socket); // Envoi de la liste des clients au client
+            continue; // Passe à l'itération suivante pour éviter l'envoi du message à tous les clients
         }
 
-        // Vérifier si le message est destiné à un client spécifique
-        if (buffer[0] == '@') {
-            char* recipient_name = strtok(buffer, " ");
-            char* message = strtok(NULL, "\0");
+        if (buffer[0] == '@') { // Si le message commence par '@', il est destiné à un client spécifique
+            char* recipient_name = strtok(buffer, " "); // Extraction du nom du destinataire du message
+            char* message = strtok(NULL, "\0"); // Extraction du contenu du message
+
             if (recipient_name != NULL && message != NULL) {
-                // Rechercher le client destinataire
-                int recipient_socket = -1;
-                pthread_mutex_lock(&mutex);
+                int recipient_socket = -1; // Socket du destinataire initialisé à -1
+                pthread_mutex_lock(&mutex); // Verrouillage du mutex
                 for (int i = 0; i < client_count; i++) {
-                    if (strcmp(client_sockets[i].name, recipient_name + 1) == 0) {
-                        recipient_socket = client_sockets[i].socket;
+                    if (strcmp(client_sockets[i].name, recipient_name + 1) == 0) { // Recherche du destinataire par son nom
+                        recipient_socket = client_sockets[i].socket; // Récupération du socket du destinataire
                         break;
                     }
                 }
-                pthread_mutex_unlock(&mutex);
-                
-                // Envoyer le message au client destinataire
-                if (recipient_socket != -1) {
-                    char message_with_name[NAME_LENGTH + BUFFER_SIZE + 4];
-                    sprintf(message_with_name, "%s : %s", client.name, message);
-                    send_message_to_client("(Uniquement à vous :) ", recipient_socket);  // Message spécifique destiné au client destinataire
-                    send_message_to_client(message_with_name, recipient_socket);
+                pthread_mutex_unlock(&mutex); // Déverrouillage du mutex
+
+                if (recipient_socket != -1) { // Si le destinataire existe
+                    char message_with_name[NAME_LENGTH + BUFFER_SIZE + 4]; // Message à envoyer au destinataire avec le nom de l'expéditeur
+                    sprintf(message_with_name, "%s : %s", client.name, message); // Formatage du message
+
+                    send_message_to_client("(Uniquement à vous :) ", recipient_socket); // Envoi d'un message spécifique au destinataire
+                    send_message_to_client(message_with_name, recipient_socket); // Envoi du message au destinataire
                 } else {
-                    send_message_to_client("Le destinataire n'existe pas.\n", client.socket);
+                    send_message_to_client("Le destinataire n'existe pas.\n", client.socket); // Envoi d'un message au client indiquant que le destinataire n'existe pas
                 }
             }
         } else {
-            // Envoyer le message à tous les clients
-            char message_with_name[NAME_LENGTH + BUFFER_SIZE + 3];
-            sprintf(message_with_name, "%s : %s", client.name, buffer);
-            send_message_all(message_with_name, client.socket);
+            // Si le message n'est pas destiné à un client spécifique, il est envoyé à tous les clients
+            char message_with_name[NAME_LENGTH + BUFFER_SIZE + 3]; // Message à envoyer à tous les clients avec le nom de l'expéditeur
+            sprintf(message_with_name, "%s : %s", client.name, buffer); // Formatage du message
+
+            send_message_all(message_with_name, client.socket); // Envoi du message à tous les clients, sauf à l'expéditeur
         }
     }
-    
+
     return NULL;
 }
 
