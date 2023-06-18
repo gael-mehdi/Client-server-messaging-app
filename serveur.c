@@ -12,16 +12,16 @@
 #define PORT 30005
 
 typedef struct {
-    int socket;
-    char name[NAME_LENGTH];
+    int socket; // Représente le descripteur de socket du clien
+    char name[NAME_LENGTH]; // Nom du client
 } Client;
 
-int client_count = 0;
-Client client_sockets[MAX_CLIENTS];
+int client_count = 0; // Représente le nombre de clients connectés au serveur
+Client client_sockets[MAX_CLIENTS]; // Tableau de structures Client qui contient les informations des clients connectés
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-char client_names[MAX_CLIENTS][NAME_LENGTH];
+char client_names[MAX_CLIENTS][NAME_LENGTH]; // Tableau de chaînes de caractères qui stocke les noms des clients connectés
 
-void send_message_all(char* message, int current_client) {
+void send_message_all(char* message, int current_client) { // Pointeur vers le message et identifiant du client qui envoie message
     pthread_mutex_lock(&mutex); // Verrouillage du mutex pour assurer une exécution exclusive de cette section critique
 
     // Parcours de tous les clients connectés
@@ -34,7 +34,7 @@ void send_message_all(char* message, int current_client) {
     pthread_mutex_unlock(&mutex); // Déverrouillage du mutex pour permettre à d'autres threads d'accéder à cette section critique
 }
 
-void send_message_to_client(char* message, int client_socket) {
+void send_message_to_client(char* message, int client_socket) { // Pointeur vers le message et identifiant du destinataire
     pthread_mutex_lock(&mutex); // Verrouillage du mutex pour assurer une exécution exclusive de cette section critique
 
     send(client_socket, message, strlen(message), 0); // Envoi du message au client spécifié
@@ -42,7 +42,7 @@ void send_message_to_client(char* message, int client_socket) {
     pthread_mutex_unlock(&mutex); // Déverrouillage du mutex pour permettre à d'autres threads d'accéder à cette section critique
 }
 
-void send_client_list(int client_socket) {
+void send_client_list(int client_socket) { // Descripteur de socket du client auquel la liste des clients doit être envoyée
     char client_list[BUFFER_SIZE]; // Buffer pour stocker la liste des clients connectés
     memset(client_list, 0, BUFFER_SIZE); // Initialisation du buffer à zéro pour éviter les données indésirables
 
